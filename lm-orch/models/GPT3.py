@@ -10,6 +10,9 @@ from utils.file_utils import read_data, write_data
 class GPT3(Model):
     """
     GPT 3.5 Model.
+
+    This model uses the OpenAI API.
+    <https://platform.openai.com/docs/guides/text-generation>
     """
 
     def __init__(self):
@@ -17,18 +20,21 @@ class GPT3(Model):
 
     def load(self):
         """
-        Load the model from memory or from Hugging Face
+        Setup OpenAI Client
         """
         client = OpenAI()
         self.model = client.chat.completions
 
     def evaluate_split(self, dataset, split="train"):
-        """
-        Evaluate the model on the specified dataset
-        """
         return dataset.evaluate(model=self, split=split, batch=True)
 
     def message_template(self, prompt):
+        """
+        Generates message template from prompt to follow OpenAI message format
+        """
+        if "system_prompt" not in self.__dict__:
+            self.system_prompt = "You are a helpful assistant."
+
         messages = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": prompt},
@@ -37,7 +43,7 @@ class GPT3(Model):
 
     def generate(self, prompt):
         """
-        Generate an response for the specified prompt
+        singular call to OpenAI API for completion
         """
         messages = self.message_template(prompt)
         response = self.model.create(model="gpt-3.5-turbo", messages=messages)
@@ -45,7 +51,9 @@ class GPT3(Model):
 
     def generate_batch(self, prompts):
         """
-        Generate an response for the specified prompt
+        Parallelize calls to OpenAI API using `/utils/openai-parallel-processing.py` script
+
+        Source: https://github.com/openai/openai-cookbook/blob/main/examples/api_request_parallel_processor.py
         """
         requests = [
             {
@@ -89,6 +97,7 @@ class GPT3(Model):
             command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
 
+        # Uncomment if errors are encountered
         # print("STDOUT:", result.stdout)
         # print("STDERR:", result.stderr)
 

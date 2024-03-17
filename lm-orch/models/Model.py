@@ -2,8 +2,8 @@ import aiohttp
 import asyncio
 import requests
 import numpy as np
-import torch
 from typing import List
+from tqdm.auto import tqdm
 from transformers import AutoTokenizer, AutoModel, AutoModelForCausalLM
 from threading import Thread
 
@@ -129,16 +129,14 @@ class Model:
         prompts = np.array(prompts)
         if running_in_notebook():
             responses = []
-            for i in range(0, len(prompts), batch_size):
-                print(f"batch {i}, {len(prompts[i : i + batch_size])}")
+            for i in tqdm(range(0, len(prompts), batch_size)):
                 run_async(
                     self.generate_ollama_response, prompts[i : i + batch_size], model
                 )
                 responses.extend(self.responses)
         else:
             responses = []
-            for i in range(0, len(prompts), batch_size):
-                print(f"batch {i}, {len(prompts[i : i + batch_size])} ")
+            for i in tqdm(range(0, len(prompts), batch_size)):
                 self.responses = asyncio.run(
                     self.generate_ollama_response(prompts[i : i + batch_size], model)
                 )

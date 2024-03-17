@@ -4,7 +4,7 @@ from models import GPT2, Phi2
 # Load datasets and models to test
 dataset = MATH()
 gpt2 = GPT2()
-phi2 = Phi2(hf=True)  # Load Phi2 from Hugging Face instead of Ollama
+phi2 = Phi2()
 
 
 # Test our models on a smaller subset of the training and test data

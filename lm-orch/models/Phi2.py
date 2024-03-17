@@ -5,6 +5,10 @@ from models.Model import Model
 class Phi2(Model):
     """
     Phi 2 Model.
+
+    This model can be pulled from ollama or Hugging Face
+    <https://huggingface.co/microsoft/phi-2>
+    <https://ollama.com/library/phi>
     """
 
     def __init__(self, hf=True):
@@ -12,7 +16,9 @@ class Phi2(Model):
 
     def load(self):
         """
-        Load the model from memory or from Hugging Face
+        Load the model from ollama or from Hugging Face
+
+        Defaults to Hugging Face
         """
         if self.hf:
             self.load_hf_model(path="microsoft/phi-2")
@@ -25,16 +31,12 @@ class Phi2(Model):
             self.model = self.generate_ollama_response
 
     def evaluate_split(self, dataset, split="train"):
-        """
-        Evaluate the model on the specified dataset
-        """
         return dataset.evaluate(model=self, split=split, batch=True)
 
     def generate(self, prompt: str) -> str:
         """
-        Generate an response for the specified prompt
+        Generate a response for the specified prompt
         """
-
         if self.hf:
             inputs = self.tokenizer(prompt, return_tensors="pt")
 
@@ -58,9 +60,8 @@ class Phi2(Model):
 
     def generate_batch(self, prompts):
         """
-        Generate an response for the specified prompt
+        Generate batched responses for the specified prompts
         """
-
         if self.hf:
 
             def prompt_template(prompt):

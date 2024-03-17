@@ -1,11 +1,14 @@
-from transformers import AutoModelForCausalLM
-
 from models.Model import Model
 
 
 class GPT2(Model):
     """
     GPT 2 Model.
+
+    This is the smallest version of GPT-2, with 124M parameters.
+
+    This model is pulled from the huggingface transformers package
+    <https://huggingface.co/openai-community/gpt2>
     """
 
     def __init__(self):
@@ -13,7 +16,7 @@ class GPT2(Model):
 
     def load(self):
         """
-        Load the model from memory or from Hugging Face
+        Load the model from Hugging Face
         """
         self.load_hf_model(path="openai-community/gpt2")
 
@@ -22,12 +25,12 @@ class GPT2(Model):
         self.tokenizer.padding_side = "left"
 
     def evaluate_split(self, dataset, split="train"):
-        """
-        Evaluate the model on the specified dataset
-        """
         return dataset.evaluate(model=self, split=split, batch=True)
 
     def generate(self, prompt):
+        """
+        Generate response for prompt using HuggingFace API
+        """
         inputs = self.tokenizer(prompt, return_tensors="pt")
 
         self.model.eval()
@@ -41,7 +44,7 @@ class GPT2(Model):
 
     def generate_batch(self, prompts):
         """
-        Generate an response for the specified prompt
+        Generate batched response for prompts using HuggingFace API
         """
         inputs = self.tokenizer(
             prompts, return_tensors="pt", padding=True, truncation=True
@@ -50,7 +53,6 @@ class GPT2(Model):
         self.model.eval()
         outputs = self.model.generate(**inputs)
         responses = self.tokenizer.batch_decode(outputs)
-        print(inputs)
 
         for i in range(len(responses)):
             responses[i] = responses[i].replace(self.tokenizer.pad_token, "")
