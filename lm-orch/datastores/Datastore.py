@@ -152,44 +152,25 @@ class Datastore:
         """
         print(f"Evaluating {model.name} on {self.name} on the {split} split")
 
-        self.augment(split)
+        if "augment_config" in self.__dict__ and self.augment_config.get("k", 0) > 0:
+            self.augment(split)
 
-        if batch:
-            return self.evaluate_batch(model, split)
-        else:
-            return self.evaluate_split(model, split)
+        self.evaluate_split(model, split, batch=batch)
 
-    def evaluate_split(self, model, split: str = "train"):
+    def evaluate_split(self, model, split: str = "train", batch=False):
         """
         Evaluate the model on the specified dataset
         """
         dataset = self.hf_dataset[split]
+
+        if batch:
+            responses = model.generate_batch(dataset["prompt"])
 
         evaluations = []
         for i in tqdm(range(len(dataset))):
             prompt, answer = dataset[i]["prompt"], dataset[i]["answer"]
 
-            response = model.generate(prompt)
-
-            evaluation = dataset[i].copy()
-            evaluation["response"] = response
-            evaluation["correct"] = self.evaluate_response(response, answer)
-            evaluations.append(evaluation)
-
-        return evaluations
-
-    def evaluate_batch(self, model, split: str = "train"):
-        """
-        Evaluate the model on the specified dataset
-        """
-        dataset = self.hf_dataset[split]
-        responses = model.generate_batch(dataset["prompt"])
-
-        evaluations = []
-        for i in tqdm(range(len(responses))):
-            answer = dataset[i]["answer"]
-
-            response = responses[i]
+            response = responses[i] if batch else model.generate(prompt)
 
             evaluation = dataset[i].copy()
             evaluation["response"] = response
