@@ -4,6 +4,7 @@ import requests
 import numpy as np
 from typing import List
 from tqdm.auto import tqdm
+import torch
 from transformers import AutoTokenizer, AutoModel, AutoModelForCausalLM
 from threading import Thread
 
@@ -23,6 +24,8 @@ class Model:
         self.hf = hf
         self.eval_history = []
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         self.load()
 
     def load_hf_model(self, path: str, **kwargs):
@@ -34,11 +37,11 @@ class Model:
         if path in ["BAAI/bge-small-en-v1.5"]:
             self.model = AutoModel.from_pretrained(
                 path, trust_remote_code=True, **kwargs
-            )
+            ).to(self.device)
         else:
             self.model = AutoModelForCausalLM.from_pretrained(
                 path, trust_remote_code=True, **kwargs
-            )
+            ).to(self.device)
 
     def load_hf_tokenizer(self, path: str, **kwargs):
         """
@@ -147,7 +150,15 @@ class Model:
 
         return list(map(lambda response: response["response"], responses))
 
-    def evaluate(self, dataset, split="train", save=True, augment_config={}):
+    def evaluate(
+        self,
+        dataset,
+        split="train",
+        save=True,
+        augment_config={},
+        log_prefix="",
+        log_suffix="",
+    ):
         """
         Evaluate the model on the specified dataset
         """
@@ -157,7 +168,9 @@ class Model:
         evaluations = self.evaluate_split(dataset, split)
 
         if save:
-            write_evaluations(evaluations, self.name, dataset.name, split)
+            write_evaluations(
+                evaluations, self.name, dataset.name, split, log_prefix, log_suffix
+            )
 
         return evaluations
 

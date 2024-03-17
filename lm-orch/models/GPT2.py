@@ -31,10 +31,12 @@ class GPT2(Model):
         """
         Generate response for prompt using HuggingFace API
         """
-        inputs = self.tokenizer(prompt, return_tensors="pt")
+        inputs = self.tokenizer(
+            prompt, return_tensors="pt", truncation=True, max_length=1024
+        ).to(self.device)
 
         self.model.eval()
-        outputs = self.model.generate(**inputs)
+        outputs = self.model.generate(**inputs, max_new_tokens=64)
         response = self.tokenizer.batch_decode(outputs)
 
         response[0] = response[0].replace(self.tokenizer.pad_token, "")
@@ -47,11 +49,11 @@ class GPT2(Model):
         Generate batched response for prompts using HuggingFace API
         """
         inputs = self.tokenizer(
-            prompts, return_tensors="pt", padding=True, truncation=True
-        )
+            prompts, return_tensors="pt", padding=True, truncation=True, max_length=1024
+        ).to(self.device)
 
         self.model.eval()
-        outputs = self.model.generate(**inputs)
+        outputs = self.model.generate(**inputs, max_new_tokens=64)
         responses = self.tokenizer.batch_decode(outputs)
 
         for i in range(len(responses)):

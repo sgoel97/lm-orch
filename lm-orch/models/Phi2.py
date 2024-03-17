@@ -38,10 +38,10 @@ class Phi2(Model):
         Generate a response for the specified prompt
         """
         if self.hf:
-            inputs = self.tokenizer(prompt, return_tensors="pt")
+            inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
 
             self.model.eval()
-            outputs = self.model.generate(**inputs)
+            outputs = self.model.generate(**inputs, use_cache=True, max_new_tokens=32)
             response = self.tokenizer.batch_decode(outputs)
 
             response[0] = response[0].replace("<|endoftext|>", "").replace(prompt, "")
@@ -74,10 +74,10 @@ class Phi2(Model):
 
             inputs = self.tokenizer(
                 prompts, return_tensors="pt", padding=True, truncation=True
-            )
+            ).to(self.device)
 
             self.model.eval()
-            outputs = self.model.generate(**inputs, use_cache=True, max_new_tokens=10)
+            outputs = self.model.generate(**inputs, use_cache=True, max_new_tokens=32)
             responses = self.tokenizer.batch_decode(outputs)
 
             for i in range(len(responses)):
