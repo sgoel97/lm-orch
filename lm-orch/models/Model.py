@@ -4,7 +4,7 @@ import requests
 import numpy as np
 import torch
 from typing import List
-from transformers import AutoTokenizer, AutoModel
+from transformers import AutoTokenizer, AutoModel, AutoModelForCausalLM
 from threading import Thread
 
 from utils.notebook_utils import running_in_notebook
@@ -31,8 +31,14 @@ class Model:
         """
         self.hf = True
         print(f"Loading {path} from Hugging Face")
-        # torch.set_default_dtype(torch.float16)
-        self.model = AutoModel.from_pretrained(path, trust_remote_code=True, **kwargs)
+        if path in ["BAAI/bge-small-en-v1.5"]:
+            self.model = AutoModel.from_pretrained(
+                path, trust_remote_code=True, **kwargs
+            )
+        else:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                path, trust_remote_code=True, **kwargs
+            )
 
     def load_hf_tokenizer(self, path: str, **kwargs):
         """

@@ -3,27 +3,39 @@ from datastores.Datastore import Datastore
 
 class WinoGrande(Datastore):
     """
-    Winogrande Dataset.
+     Hotpot QA Dataset.
 
-    WinoGrande is a collection of 44k problems, inspired by Winograd Schema Challenge (Levesque, Davis, and Morgenstern 2011).
-    Formulated as a fill-in-a-blank task with binary options, the goal is to choose the right option for a given sentence which requires commonsense reasoning.
+     HotpotQA is  dataset with Wikipedia-based question-answer pairs with four key features:
+     (1) the questions require finding and reasoning over multiple supporting documents to answer;
+     (2) the questions are diverse and not constrained to any pre-existing knowledge bases or knowledge schemas;
+     (3) we provide sentence-level supporting facts required for reasoning, allowingQA systems to reason with strong supervision and explain the predictions;
+     (4) we offer a new type of factoid comparison questions to test QA systems’ ability to extract relevant facts and perform necessary comparison.
 
-    Example row:
+     Example row:
 
     {
-        'sentence': 'John moved the couch from the garage to the backyard to create space. The _ is small.',
-        'option1': 'garage',
-        'option2': 'backyard',
-        'answer': 1
-    }
+         "answer": "This is the answer",
+         "context": {
+             "sentences": [["Sent 1"], ["Sent 21", "Sent 22"]],
+             "title": ["Title1", "Title 2"]
+         },
+         "id": "000001",
+         "level": "medium",
+         "question": "What is the answer?",
+         "supporting_facts": {
+             "sent_id": [0, 1, 3],
+             "title": ["Title of para 1", "Title of para 2", "Title of para 3"]
+         },
+         "type": "comparison"
+     }
 
-    The dataset is pulled from the huggingface datasets package.
-    <https://huggingface.co/datasets/winogrande>
+     The dataset is pulled from the huggingface datasets package.
+     <https://huggingface.co/datasets/hotpot_qa>
     """
 
     def __init__(self, seed=None):
         super().__init__(
-            name="WinoGrande",
+            name="Hotpot QA",
             system_prompt="You are a helpful assistant who solves word problems. Choose the option that is a better fit for the gap in the sentence. Do not explain. Only say 1 or 2.",
             seed=seed,
         )

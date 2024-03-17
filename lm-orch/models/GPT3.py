@@ -66,7 +66,7 @@ class GPT3(Model):
 
         command = [
             "python3",
-            "./models/openai_parallel_processing.py",
+            "./utils/openai_parallel_processing.py",
             "--requests_filepath",
             "./data/gpt3_requests.jsonl",
             "--save_filepath",

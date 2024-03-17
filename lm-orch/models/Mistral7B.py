@@ -37,5 +37,4 @@ class Mistral7B(Model):
         for i, prompt in enumerate(prompts):
             print(i + 1, end="\n" if (i + 1) % 20 == 0 else " ")
             responses.append(self.fetch_ollama(prompt, model="mistral"))
-        # responses = self.generate_ollama(prompts, model="mistral")
         return responses
