@@ -27,7 +27,9 @@ class BGE(Model):
         """
         Generate response for prompt using HuggingFace API
         """
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+        inputs = self.tokenizer(
+            prompt, padding=True, truncation=True, return_tensors="pt"
+        ).to(self.device)
 
         self.model.eval()
         with torch.no_grad():
