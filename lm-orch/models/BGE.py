@@ -1,3 +1,4 @@
+from typing import List
 import torch
 import torch.nn.functional as F
 
@@ -22,10 +23,7 @@ class BGE(Model):
         self.load_hf_model(path="BAAI/bge-small-en-v1.5")
         self.load_hf_tokenizer(path="BAAI/bge-small-en-v1.5")
 
-    def evaluate_split(self, dataset, split="train"):
-        return dataset.evaluate(model=self, split=split, batch=True)
-
-    def generate(self, prompt):
+    def generate(self, prompt: str, system_prompt: str = None):
         """
         Generate response for prompt using HuggingFace API
         """
@@ -39,7 +37,7 @@ class BGE(Model):
 
         return sentence_embeddings[0]
 
-    def generate_batch(self, prompts):
+    def generate_batch(self, prompts: List[str], system_prompt: str = None):
         """
         Generate batched response for prompts using HuggingFace API
         """

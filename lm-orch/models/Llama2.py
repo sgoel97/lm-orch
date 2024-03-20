@@ -1,3 +1,5 @@
+from typing import List
+
 from models.Model import Model
 
 
@@ -18,12 +20,15 @@ class Llama2(Model):
         """
         self.model = self.generate_ollama_response
 
-    def evaluate_split(self, dataset, split="train"):
-        return dataset.evaluate(model=self, split=split, batch=True)
+    def generate(self, prompt: str, system_prompt: str = None):
+        """
+        Generate a single response from ollama
+        """
+        return self.fetch_ollama(prompt, system_prompt, model="llama2")
 
-    def generate_batch(self, prompts):
+    def generate_batch(self, prompts: List[str], system_prompt: str = None):
         """
         Generate batched responses from ollama
         """
-        responses = self.generate_ollama(prompts, model="llama2")
+        responses = self.generate_ollama(prompts, system_prompt, model="llama2")
         return responses

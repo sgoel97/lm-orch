@@ -4,10 +4,11 @@ import numpy as np
 from tqdm.auto import tqdm
 from datasets import load_dataset, DatasetDict
 from VectorStore import VectorStore
+from utils.logging_utils import write_evaluations
 
 
 class Datastore:
-    def __init__(self, name, system_prompt=None, seed=None):
+    def __init__(self, name: str, system_prompt: str = None, seed: int = None):
         """
         Initialize the class with the given name. Set class attributes to None and then call the load and process methods.
         """
@@ -75,7 +76,7 @@ class Datastore:
 
         self.process_hf_dataset(function=add_prompt_and_answer)
 
-    def embed(self, split="train"):
+    def embed(self, split: str = "train"):
         """
         Embed the data using the vector store
         """
@@ -84,7 +85,7 @@ class Datastore:
         if self.store is None:
             self.store = VectorStore()
 
-        if Path(store_path).exists():
+        if Path(store_path).exists() and "sample" not in store_path:
             self.store.load(store_path)
             print(f"Loaded {split} vector store from", store_path)
         else:
@@ -92,27 +93,37 @@ class Datastore:
             self.store.persist(store_path)
             print(f"Persisted {split} vector store to", store_path)
 
-    def augment(self, split="train"):
+    def augment(self, split: str = "train"):
         """
-        Augment the data
+        Augment the data with context from the vector store
         """
-        self.embed(split)
-        self.hf_dataset[split] = self.hf_dataset[split].map(self.augment_row)
+        if self.augment_config is not None:
+            self.embed(split)
+            self.hf_dataset[split] = self.hf_dataset[split].map(self.augment_row)
+
+    def get_context_string(self, nodes: list):
+        context_str = []
+        for node in nodes:
+            context = f"Question: {node.metadata['original_prompt']}\nAnswer: {node.metadata['answer']}"
+            context_str.append(context)
+        context_str = "\n\n".join(context_str)
+        return context_str
+
+    def get_context_template(self, context: str, prompt: str):
+        if context == "":
+            return prompt
+        return f"We have provided context information below. \n---------------------\n{context}\n---------------------\nGiven this information, please answer the question: {prompt}\n"
 
     def augment_row(self, row):
+        """
+        Augment one datapoint with context from the vector store
+        """
         k = self.augment_config.get("k", 0)
         measure = self.augment_config.get("measure", "cos")
-        nodes = self.store.retrieve(row["prompt"], k=k, measure=measure)
+        nodes = self.store.retrieve(row["original_prompt"], k=k, measure=measure)
 
-        context_str = ""
-        for node in nodes:
-            context_str += f"Question: {node.metadata['prompt']}\nAnswer: {node.metadata['answer']}\n\n"
-
-        if len(nodes) > 0:
-            prompt = f"We have provided context information below. \n---------------------\n{context_str}\n---------------------\nGiven this information, please answer the question: {row['prompt']}\n"
-        else:
-            prompt = row["original_prompt"]
-
+        context_str = self.get_context_string(nodes)
+        prompt = self.get_context_template(context_str, row["original_prompt"])
         row["prompt"] = prompt
         return row
 
@@ -122,7 +133,7 @@ class Datastore:
         """
         return row
 
-    def sample(self, sample_size, split: str = "train"):
+    def sample(self, sample_size: int, split: str = "train"):
         dataset = self.hf_dataset[split]
 
         a = range(len(dataset))
@@ -146,40 +157,50 @@ class Datastore:
         """
         raise NotImplementedError
 
-    def evaluate(self, model, split: str = "train", batch=False):
+    def evaluate(
+        self,
+        model,
+        split: str = "train",
+        batch: bool = False,
+        augment_config: dict | None = None,
+        save: bool = False,
+        log_prefix: str = "",
+        log_suffix: str = "",
+    ):
         """
         Evaluate the model on the dataset
         """
         print(f"Evaluating {model.name} on {self.name} on the {split} split")
+        self.augment_config = augment_config
+        self.augment(split)
 
-        if "augment_config" in self.__dict__ and self.augment_config.get("k", 0) > 0:
-            self.augment(split)
-
-        self.evaluate_split(model, split, batch=batch)
-
-    def evaluate_split(self, model, split: str = "train", batch=False):
-        """
-        Evaluate the model on the specified dataset
-        """
         dataset = self.hf_dataset[split]
 
         if batch:
-            responses = model.generate_batch(dataset["prompt"])
+            responses = model.generate_batch(dataset["prompt"], self.system_prompt)
 
         evaluations = []
         for i in tqdm(range(len(dataset))):
             prompt, answer = dataset[i]["prompt"], dataset[i]["answer"]
 
-            response = responses[i] if batch else model.generate(prompt)
+            if batch:
+                response = responses[i]
+            else:
+                response = model.generate(prompt, self.system_prompt)
 
             evaluation = dataset[i].copy()
             evaluation["response"] = response
             evaluation["correct"] = self.evaluate_response(response, answer)
             evaluations.append(evaluation)
 
+        if save:
+            write_evaluations(
+                evaluations, self.name, dataset.name, split, log_prefix, log_suffix
+            )
+
         return evaluations
 
-    def evaluate_response(self, generated_answer: str, answer: str) -> bool:
+    def evaluate_response(self, generated_answer: str, answer: str) -> bool | float:
         """
         Deterime whether the generated answer is correct or not
         """

@@ -43,10 +43,6 @@ class MATH(Datastore):
     def get_answer(self, row) -> str:
         return row["solution"]
 
-    def augment_row(self, row):
-        super().augment_row(row)
-        self.system_prompt = "You are a helpful assistant who solves math problems. Only answer the question you are asked to solve, which will be the last question asked. Box the final answer to the question using the latex \\boxed tag."
-
     def evaluate_response(self, generated_answer: str, answer: str) -> bool:
         def extract_answer(answer):
             start_index = answer.rfind("\\boxed{") + 7

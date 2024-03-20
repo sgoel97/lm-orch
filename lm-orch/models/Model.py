@@ -57,31 +57,42 @@ class Model:
         """
         raise NotImplementedError
 
-    def fetch_ollama(self, prompt: str, model: str = "llama2"):
+    def fetch_ollama(
+        self, prompt: str, system_prompt: str = None, model: str = "llama2"
+    ):
         """
         Fetches a response from the Ollama API using the provided prompt and model.
         """
-        if "system_prompt" not in self.__dict__:
-            self.system_prompt = "You are a helpful assistant."
+        content = {
+            "model": model,
+            "prompt": prompt,
+            "stream": False,
+        }
+
+        if system_prompt is not None:
+            content["system"] = system_prompt
 
         response = requests.post(
             "http://localhost:11434/api/generate",
-            json={
-                "model": model,
-                "prompt": prompt,
-                "stream": False,
-                "system": self.system_prompt,
-            },
+            json=content,
         )
 
         return response.json()["response"]
 
-    async def fetch_ollama_response(self, session, prompt: str, model: str = "llama2"):
+    async def fetch_ollama_response(
+        self, session, prompt: str, system_prompt: str = None, model: str = "llama2"
+    ):
         """
         Asynchronously fetches a response from the Ollama API using the provided session, prompt, and model.
         """
-        if "system_prompt" not in self.__dict__:
-            self.system_prompt = "You are a helpful assistant."
+        content = {
+            "model": model,
+            "prompt": prompt,
+            "stream": False,
+        }
+
+        if system_prompt is not None:
+            content["system"] = system_prompt
 
         async with session.post(
             "http://localhost:11434/api/generate",
@@ -89,19 +100,23 @@ class Model:
                 "model": model,
                 "prompt": prompt,
                 "stream": False,
-                "system": self.system_prompt,
+                "system": system_prompt,
             },
         ) as response:
             return await response.json()
 
-    async def generate_ollama_response(self, prompts: List[str], model: str = "llama2"):
+    async def generate_ollama_response(
+        self, prompts: List[str], system_prompt: str = None, model: str = "llama2"
+    ):
         """
         Asynchronously generates Ollama responses based on the given prompts using the specified model.
         """
         async with aiohttp.ClientSession() as session:
             tasks = []
             for prompt in prompts:
-                tasks.append(self.fetch_ollama_response(session, prompt, model))
+                tasks.append(
+                    self.fetch_ollama_response(session, prompt, system_prompt, model)
+                )
 
             responses = await asyncio.gather(*tasks)
 
@@ -110,43 +125,41 @@ class Model:
             return responses
 
     def generate_ollama(
-        self, prompts: str | List[str], model: str = "llama2", batch_size=16
+        self,
+        prompts: List[str],
+        system_prompt: str = None,
+        model: str = "llama2",
+        batch_size=16,
     ) -> str:
         """
         A function to generate ollama responses based on given prompts and a specified model.
         """
 
-        def run_async(async_func, prompts, model):
-            def run(loop, async_func, prompts, model):
+        def run_async(async_func, *args):
+            def run(loop, async_func, *args):
                 asyncio.set_event_loop(loop)
-                loop.run_until_complete(async_func(prompts, model))
+                loop.run_until_complete(async_func(*args))
 
             loop = asyncio.new_event_loop()
-            t = Thread(target=run, args=(loop, async_func, prompts, model))
+            t = Thread(target=run, args=(loop, async_func, *args))
             t.start()
             t.join()
 
-        if isinstance(prompts, str):
-            prompts = [prompts]
-
         prompts = np.array(prompts)
-        if running_in_notebook():
-            responses = []
-            for i in tqdm(range(0, len(prompts), batch_size)):
-                run_async(
-                    self.generate_ollama_response, prompts[i : i + batch_size], model
-                )
-                responses.extend(self.responses)
-        else:
-            responses = []
-            for i in tqdm(range(0, len(prompts), batch_size)):
-                self.responses = asyncio.run(
-                    self.generate_ollama_response(prompts[i : i + batch_size], model)
-                )
-                responses.extend(self.responses)
+        responses = []
+        for i in tqdm(range(0, len(prompts), batch_size)):
+            batched_prompts = prompts[i : i + batch_size]
 
-        if isinstance(prompts, str):
-            return responses[0]["response"]
+            if running_in_notebook():
+                run_async(
+                    self.generate_ollama_response, batched_prompts, system_prompt, model
+                )
+            else:
+                self.responses = asyncio.run(
+                    self.generate_ollama_response(batched_prompts, system_prompt, model)
+                )
+
+            responses.extend(self.responses)
 
         return list(map(lambda response: response["response"], responses))
 
@@ -154,39 +167,34 @@ class Model:
         self,
         dataset,
         split="train",
+        batch=False,
+        augment_config=None,
         save=True,
-        augment_config={},
         log_prefix="",
         log_suffix="",
     ):
         """
         Evaluate the model on the specified dataset
         """
-        self.system_prompt = dataset.system_prompt
-        dataset.augment_config = augment_config
-
-        evaluations = self.evaluate_split(dataset, split)
-
-        if save:
-            write_evaluations(
-                evaluations, self.name, dataset.name, split, log_prefix, log_suffix
-            )
+        evaluations = dataset.evaluate(
+            model=self,
+            split=split,
+            batch=batch,
+            augment_config=augment_config,
+            save=save,
+            log_prefix=log_prefix,
+            log_suffix=log_suffix,
+        )
 
         return evaluations
 
-    def evaluate_split(self, dataset, split="train"):
-        """
-        Evaluate the model on the specified dataset
-        """
-        return dataset.evaluate(model=self, split=split, batch=False)
-
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, system_prompt: str = None) -> str:
         """
         Generate an response for the specified prompt
         """
         raise NotImplementedError
 
-    def generate_batch(self, prompts: list) -> list:
+    def generate_batch(self, prompts: list, system_prompt: str = None) -> list:
         """
         Generate an response for the specified prompts
         """

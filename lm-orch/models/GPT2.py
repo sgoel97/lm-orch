@@ -24,15 +24,12 @@ class GPT2(Model):
         self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
         self.tokenizer.padding_side = "left"
 
-    def evaluate_split(self, dataset, split="train"):
-        return dataset.evaluate(model=self, split=split, batch=True)
-
-    def generate(self, prompt):
+    def generate(self, prompt, system_prompt: str = None):
         """
         Generate response for prompt using HuggingFace API
         """
         inputs = self.tokenizer(
-            prompt, return_tensors="pt", truncation=True, max_length=1024
+            prompt, return_tensors="pt", truncation=True, max_length=1024 - 64
         ).to(self.device)
 
         self.model.eval()
@@ -44,12 +41,16 @@ class GPT2(Model):
 
         return response[0]
 
-    def generate_batch(self, prompts):
+    def generate_batch(self, prompts, system_prompt: str = None):
         """
         Generate batched response for prompts using HuggingFace API
         """
         inputs = self.tokenizer(
-            prompts, return_tensors="pt", padding=True, truncation=True, max_length=1024
+            prompts,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=1024 - 64,
         ).to(self.device)
 
         self.model.eval()

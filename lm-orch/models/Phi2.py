@@ -1,4 +1,4 @@
-import requests
+from typing import List
 from models.Model import Model
 
 
@@ -30,14 +30,22 @@ class Phi2(Model):
         else:
             self.model = self.generate_ollama_response
 
-    def evaluate_split(self, dataset, split="train"):
-        return dataset.evaluate(model=self, split=split, batch=True)
+    def template(self, prompts: str | List[str], system_prompt: str = None):
+        if isinstance(prompts, str):
+            if system_prompt is not None:
+                prompts = f"{system_prompt} {prompts}"
 
-    def generate(self, prompt: str) -> str:
+            return f"Instruct: {prompts}\n\nOutput:"
+        else:
+            return [self.template(p, system_prompt) for p in prompts]
+
+    def generate(self, prompt: str, system_prompt: str = None) -> str:
         """
         Generate a response for the specified prompt
         """
         if self.hf:
+            prompt = self.template(prompt, system_prompt)
+
             inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
 
             self.model.eval()
@@ -48,29 +56,15 @@ class Phi2(Model):
 
             return response[0]
         else:
-            response = requests.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": "phi",
-                    "prompt": prompt,
-                    "stream": False,
-                },
-            )
-            return response.json()["response"]
+            response = self.fetch_ollama(prompt, system_prompt, model="phi")
+            return response
 
-    def generate_batch(self, prompts):
+    def generate_batch(self, prompts: List[str], system_prompt: str = None):
         """
         Generate batched responses for the specified prompts
         """
         if self.hf:
-
-            def prompt_template(prompt):
-                if "system_prompt" not in self.__dict__:
-                    return f"Instruct: {prompt}\n\Output:"
-                else:
-                    return f"Instruct: {self.system_prompt} {prompt}\n\nOutput:"
-
-            prompts = list(map(prompt_template, prompts))
+            prompts = self.template(prompts, system_prompt)
 
             inputs = self.tokenizer(
                 prompts, return_tensors="pt", padding=True, truncation=True
@@ -88,5 +82,5 @@ class Phi2(Model):
             return responses
 
         else:
-            responses = self.generate_ollama(prompts, model="phi")
+            responses = self.generate_ollama(prompts, system_prompt, model="phi")
             return responses

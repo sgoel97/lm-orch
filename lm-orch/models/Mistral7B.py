@@ -1,3 +1,5 @@
+from typing import List
+
 from models.Model import Model
 
 
@@ -18,20 +20,17 @@ class Mistral7B(Model):
         """
         self.model = self.generate_ollama_response
 
-    def evaluate_split(self, dataset, split="train"):
-        return dataset.evaluate(model=self, split=split, batch=True)
-
-    def generate(self, prompt):
+    def generate(self, prompt: str, system_prompt: str = None):
         """
         Generate a single response from ollama
         """
-        return self.fetch_ollama(prompt, model="mistral")
+        return self.fetch_ollama(prompt, system_prompt, model="mistral")
 
-    def generate_batch(self, prompts):
+    def generate_batch(self, prompts: List[str], system_prompt: str = None):
         """
         Generate batched responses from ollama
         """
         responses = []
         for i, prompt in enumerate(prompts):
-            responses.append(self.fetch_ollama(prompt, model="mistral"))
+            responses.append(self.fetch_ollama(prompt, system_prompt, model="mistral"))
         return responses

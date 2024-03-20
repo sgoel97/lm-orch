@@ -37,7 +37,7 @@ class VectorStore:
         return self.encoder.generate_batch(text)
 
     def from_dataset(self, dataset):
-        encoded_prompts = self.encode_batch(dataset["prompt"])
+        encoded_prompts = self.encode_batch(dataset["original_prompt"])
         nodes = [Node(encoded_prompts[i], dataset[i]) for i in range(len(dataset))]
         self.data = np.array(nodes)
 
@@ -58,7 +58,7 @@ class VectorStore:
         self, query: str | Tensor, k: int = 1, measure: str = "cos"
     ) -> List[Node]:
         if isinstance(query, str):
-            query = self.encode(query)
+            query = self.encode(query).view(1, -1)
         query = query.type(torch.float)
 
         embedding_matrix = torch.stack(list(map(lambda x: x.data, self.data)))
